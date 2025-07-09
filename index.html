@@ -10,9 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- jsPDF and html2canvas for PDF generation -->
+    <!-- jsPDF for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -520,69 +519,166 @@
                 return;
             }
 
-            // Temporarily hide buttons for cleaner PDF capture
-            const buttonsToHide = document.querySelectorAll('#downloadPdfBtn, #clearAllBtn, .edit-sku-btn, .delete-sku-btn, .remove-cart-item-btn, #toggleSkuDatabaseBtn, #addUpdateSkuBtn, #addItemBtn');
-            buttonsToHide.forEach(btn => btn.style.visibility = 'hidden');
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
 
-            const element = document.querySelector('.max-w-4xl'); // Capture the main content area
-            const originalPadding = element.style.padding;
-            element.style.padding = '20px'; // Add some padding for PDF
+            const margin = 20;
+            let yPos = margin;
+            const lineHeight = 7;
+            const pageWidth = pdf.internal.pageSize.getWidth();
 
-            // Create a temporary div for Nexrise India Infra details
-            const nexriseDetailsDiv = document.createElement('div');
-            nexriseDetailsDiv.className = 'text-center text-gray-700 text-sm mt-8 p-4 bg-gray-100 rounded-lg';
-            nexriseDetailsDiv.innerHTML = `
-                <p><strong>Nexrise India Infra</strong></p>
-                <p>Mobile Access Scaffold Tower and Ladders Company</p>
-                <p>Jaipur, serving across Pan India</p>
-                <p>Contact: +91 9009006794 | Email: sales@nexriseindia.in</p>
-                <p>Website: www.nexriseindia.in</p>
-            `;
-            element.appendChild(nexriseDetailsDiv);
+            // --- Company Header ---
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Nexrise India Infra', pageWidth / 2, yPos, { align: 'center' });
+            yPos += lineHeight;
 
-            // Add a title to the PDF
-            const pdfTitle = document.createElement('h1');
-            pdfTitle.textContent = 'Price Quotation';
-            pdfTitle.className = 'text-3xl font-bold text-center mb-6 text-gray-800';
-            element.prepend(pdfTitle); // Add at the beginning of the element
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('Mobile Access Scaffold Tower and Ladders Company', pageWidth / 2, yPos, { align: 'center' });
+            yPos += lineHeight;
+            pdf.text('Jaipur, serving across Pan India', pageWidth / 2, yPos, { align: 'center' });
+            yPos += lineHeight;
+            pdf.text('Contact: +91 9009006794 | Email: sales@nexriseindia.in', pageWidth / 2, yPos, { align: 'center' });
+            yPos += lineHeight;
+            pdf.text('Website: www.nexriseindia.in', pageWidth / 2, yPos, { align: 'center' });
+            yPos += lineHeight * 2; // Extra space
 
-            try {
-                const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'px',
-                    format: 'a4'
-                });
+            // --- Quotation Title and Date ---
+            pdf.setFontSize(22);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('PRICE QUOTATION', pageWidth / 2, yPos, { align: 'center' });
+            yPos += lineHeight * 2;
 
-                const imgWidth = 595; // A4 width in px (approx)
-                const pageHeight = 842; // A4 height in px (approx)
-                const imgHeight = canvas.height * imgWidth / canvas.width;
-                let heightLeft = imgHeight;
-                let position = 0;
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, pageWidth - margin, yPos, { align: 'right' });
+            yPos += lineHeight * 2;
 
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
+            // --- Items Table Header ---
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            let xPos = margin;
+            const colWidths = [25, 45, 20, 25, 25, 30, 30]; // Adjusted widths for better fit
+            const headers = ['SKU Code', 'Item Name', 'Qty', 'Unit Wt (Kg)', 'Unit Price (₹)', 'Total Wt (Kg)', 'Total Price (₹)'];
 
-                while (heightLeft >= 0) {
-                    position = heightLeft - imgHeight;
+            headers.forEach((header, i) => {
+                pdf.text(header, xPos, yPos);
+                xPos += colWidths[i];
+            });
+            yPos += lineHeight;
+            pdf.line(margin, yPos, pageWidth - margin, yPos); // Horizontal line
+            yPos += lineHeight;
+
+            // --- Items Table Rows ---
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(9); // Slightly smaller font for table content
+
+            cartItems.forEach(item => {
+                // Check if new page is needed
+                if (yPos + lineHeight * 2 > pdf.internal.pageSize.getHeight() - margin) {
                     pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                    heightLeft -= pageHeight;
+                    yPos = margin;
+                    // Re-add headers on new page
+                    xPos = margin;
+                    pdf.setFont('helvetica', 'bold');
+                    headers.forEach((header, i) => {
+                        pdf.text(header, xPos, yPos);
+                        xPos += colWidths[i];
+                    });
+                    yPos += lineHeight;
+                    pdf.line(margin, yPos, pageWidth - margin, yPos);
+                    yPos += lineHeight;
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(9);
                 }
 
+                xPos = margin;
+                pdf.text(item.skuCode, xPos, yPos);
+                xPos += colWidths[0];
+                pdf.text(item.itemName, xPos, yPos);
+                xPos += colWidths[1];
+                pdf.text(item.quantity.toString(), xPos, yPos);
+                xPos += colWidths[2];
+                pdf.text(item.weight.toFixed(2), xPos, yPos);
+                xPos += colWidths[3];
+                pdf.text(item.price.toFixed(2), xPos, yPos);
+                xPos += colWidths[4];
+                pdf.text(item.totalItemWeight.toFixed(2), xPos, yPos);
+                xPos += colWidths[5];
+                pdf.text(item.totalItemPrice.toFixed(2), xPos, yPos);
+                yPos += lineHeight;
+
+                if (item.modelNo || item.towerHeight) {
+                    let details = '';
+                    if (item.modelNo) details += `Model: ${item.modelNo}`;
+                    if (item.modelNo && item.towerHeight) details += ' | ';
+                    if (item.towerHeight) details += `Height: ${item.towerHeight}`;
+                    pdf.text(details, margin + 5, yPos); // Indent details slightly
+                    yPos += lineHeight;
+                }
+            });
+
+            yPos += lineHeight; // Space after items
+            pdf.line(margin, yPos, pageWidth - margin, yPos); // Horizontal line before summary
+            yPos += lineHeight;
+
+            // --- Summary Section ---
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+
+            let currentTotalWeight = parseFloat(totalWeightSpan.textContent);
+            let currentGrandTotal = parseFloat(grandTotalSpan.textContent.replace('₹', ''));
+            let currentDiscountAmount = parseFloat(discountAmountSpan.textContent.replace('₹', ''));
+            let currentFinalAmount = parseFloat(finalAmountSpan.textContent.replace('₹', ''));
+            let currentDiscountPercentage = parseFloat(discountInput.value);
+
+            pdf.text('Total Weight:', pageWidth - margin - 50, yPos, { align: 'right' });
+            pdf.text(`${currentTotalWeight.toFixed(2)} Kg`, pageWidth - margin, yPos, { align: 'right' });
+            yPos += lineHeight;
+
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Grand Total:', pageWidth - margin - 50, yPos, { align: 'right' });
+            pdf.text(`₹${currentGrandTotal.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+            yPos += lineHeight;
+
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Discount (${currentDiscountPercentage}%):`, pageWidth - margin - 50, yPos, { align: 'right' });
+            pdf.text(`- ₹${currentDiscountAmount.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+            yPos += lineHeight;
+
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Final Amount:', pageWidth - margin - 50, yPos, { align: 'right' });
+            pdf.text(`₹${currentFinalAmount.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+            yPos += lineHeight * 2;
+
+            // --- Additional Charges / Notes ---
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Additional Charges (As Applicable):', margin, yPos);
+            yPos += lineHeight;
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('• GST Extra', margin + 5, yPos);
+            yPos += lineHeight;
+            pdf.text('• Freight Extra', margin + 5, yPos);
+            yPos += lineHeight;
+            pdf.text('• Insurance & Packing Extra', margin + 5, yPos);
+            yPos += lineHeight;
+            pdf.text('*Above prices are exclusive of GST and additional charges', margin + 5, yPos);
+            yPos += lineHeight * 2;
+
+            try {
                 pdf.save('Price_Quotation.pdf');
                 await showModal('PDF Generated', 'Your price quotation PDF has been downloaded!');
-
             } catch (error) {
                 console.error('Error generating PDF:', error);
                 await showModal('PDF Error', 'Failed to generate PDF. Please try again.');
-            } finally {
-                // Restore hidden buttons
-                buttonsToHide.forEach(btn => btn.style.visibility = 'visible');
-                element.style.padding = originalPadding; // Restore original padding
-                element.removeChild(nexriseDetailsDiv); // Remove temporary div
-                element.removeChild(pdfTitle); // Remove temporary title
             }
         }
 
