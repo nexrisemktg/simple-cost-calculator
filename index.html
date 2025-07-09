@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Calculator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- jsPDF and html2canvas for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 md:p-8 lg:p-10">
+    <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-xl p-6 sm:p-8 md:p-10">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-2">Price Calculator</h1>
+            <p class="text-gray-600 text-sm sm:text-base">Smart pricing with collapsible SKU management</p>
+        </header>
+
+        <!-- SKU Database Management Section -->
+        <div class="bg-gray-50 p-4 sm:p-6 rounded-xl mb-8 border border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 flex items-center">
+                    <i class="fas fa-database mr-3 text-blue-500"></i> SKU Database Management
+                </h2>
+                <button id="toggleSkuDatabaseBtn" class="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                    <i class="fas fa-eye-slash mr-2"></i> Hide SKU Database
+                </button>
+            </div>
+
+            <div id="skuDatabaseContent">
+                <!-- Add New SKU Form -->
+                <div class="mb-6 border-b pb-6 border-gray-200">
+                    <h3 class="text-lg sm:text-xl font-medium text-gray-700 mb-4 flex items-center">
+                        <i class="fas fa-plus-circle mr-2 text-green-500"></i> Add New SKU
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <input type="text" id="skuCodeInput" placeholder="SKU Code" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                        <input type="text" id="itemNameInput" placeholder="Item Name" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                        <input type="number" id="weightInput" placeholder="Weight (Kg)" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                        <input type="number" id="priceInput" placeholder="Price (₹)" class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                    </div>
+                    <button id="addUpdateSkuBtn" class="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md">
+                        <i class="fas fa-plus mr-2"></i> Add SKU
+                    </button>
+                </div>
+
+                <!-- SKU List Display -->
+                <div id="skuList" class="space-y-4">
+                    <!-- SKUs will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Price Calculator Section -->
+        <div class="bg-gray-50 p-4 sm:p-6 rounded-xl mb-8 border border-gray-200">
+            <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-calculator mr-3 text-purple-500"></i> Price Calculator
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end mb-4">
+                <div class="col-span-2">
+                    <label for="selectSku" class="block text-sm font-medium text-gray-700 mb-1">Select SKU</label>
+                    <select id="selectSku" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                        <option value="">-- Select SKU --</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="quantityInput" class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                    <input type="number" id="quantityInput" value="1" min="1" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                </div>
+                <button id="addItemBtn" class="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md">
+                    <i class="fas fa-cart-plus mr-2"></i> Add
+                </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label for="modelNoInput" class="block text-sm font-medium text-gray-700 mb-1">Model No. (Optional)</label>
+                    <input type="text" id="modelNoInput" placeholder="Model No. (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                </div>
+                <div>
+                    <label for="towerHeightInput" class="block text-sm font-medium text-gray-700 mb-1">Tower Height (Optional)</label>
+                    <input type="text" id="towerHeightInput" placeholder="Tower Height (Optional)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-700">
+                </div>
+            </div>
+
+            <!-- Cart Items Display -->
+            <div id="cartItems" class="space-y-3 min-h-[100px] flex flex-col justify-center items-center text-gray-500">
+                <i class="fas fa-shopping-cart text-4xl mb-2"></i>
+                <p>No items added yet</p>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="bg-gray-50 p-4 sm:p-6 rounded-xl mb-8 border border-gray-200">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div class="flex items-center justify-between text-lg font-medium text-gray-700">
+                    <span class="flex items-center"><i class="fas fa-weight-hanging mr-2 text-yellow-600"></i> Total Weight:</span>
+                    <span id="totalWeight" class="text-right">0.00 Kg</span>
+                </div>
+                <div class="flex items-center justify-between text-xl font-bold text-gray-800">
+                    <span class="flex items-center"><i class="fas fa-rupee-sign mr-2 text-green-600"></i> Grand Total:</span>
+                    <span id="grandTotal" class="text-right">₹0.00</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-4">
+                <label for="discountInput" class="flex items-center text-lg font-medium text-gray-700">
+                    <i class="fas fa-percent mr-2 text-red-500"></i> Discount (%):
+                </label>
+                <div class="flex items-center">
+                    <input type="number" id="discountInput" value="0" min="0" max="100" class="w-20 p-2 border border-gray-300 rounded-lg text-center focus:ring-blue-500 focus:border-blue-500 text-gray-700 mr-2">
+                    <span class="text-lg font-medium text-gray-700">%</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between text-lg font-medium text-gray-700 mb-4">
+                <span>Discount Amount:</span>
+                <span id="discountAmount" class="text-right">₹0.00</span>
+            </div>
+            <div class="flex items-center justify-between text-2xl font-bold text-blue-700 border-t pt-4 border-gray-200">
+                <span>Final Amount:</span>
+                <span id="finalAmount" class="text-right">₹0.00</span>
+            </div>
+        </div>
+
+        <!-- Additional Charges & Buttons -->
+        <div class="bg-yellow-50 p-4 sm:p-6 rounded-xl mb-8 border border-yellow-200 text-yellow-800">
+            <h3 class="text-lg font-semibold mb-2">Additional Charges (As Applicable):</h3>
+            <ul class="list-disc list-inside text-sm space-y-1">
+                <li>GST Extra</li>
+                <li>Freight Extra</li>
+                <li>Insurance & Packing Extra</li>
+                <li>*Above prices are exclusive of GST and additional charges</li>
+            </ul>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <button id="downloadPdfBtn" class="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors shadow-md">
+                <i class="fas fa-file-pdf mr-2"></i> Download PDF
+            </button>
+            <button id="clearAllBtn" class="flex-1 py-3 bg-gray-400 text-white font-semibold rounded-lg hover:bg-gray-500 transition-colors shadow-md">
+                <i class="fas fa-times-circle mr-2"></i> Clear All
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Modal for Alerts/Confirmations -->
+    <div id="customModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <h3 id="modalTitle" class="text-xl font-semibold mb-4 text-gray-800"></h3>
+            <p id="modalMessage" class="text-gray-700 mb-6"></p>
+            <div id="modalButtons" class="flex justify-center gap-4">
+                <button id="modalConfirmBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors hidden">Confirm</button>
+                <button id="modalCancelBtn" class="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-colors hidden">Cancel</button>
+                <button id="modalOkBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors hidden">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize jsPDF
+        const { jsPDF } = window.jspdf;
+
+        // DOM Elements
+        const skuCodeInput = document.getElementById('skuCodeInput');
+        const itemNameInput = document.getElementById('itemNameInput');
+        const weightInput = document.getElementById('weightInput');
+        const priceInput = document.getElementById('priceInput');
+        const addUpdateSkuBtn = document.getElementById('addUpdateSkuBtn');
+        const skuListDiv = document.getElementById('skuList');
+        const toggleSkuDatabaseBtn = document.getElementById('toggleSkuDatabaseBtn');
+        const skuDatabaseContent = document.getElementById('skuDatabaseContent');
+
+        const selectSkuDropdown = document.getElementById('selectSku');
+        const quantityInput = document.getElementById('quantityInput');
+        const modelNoInput = document.getElementById('modelNoInput');
+        const towerHeightInput = document.getElementById('towerHeightInput');
+        const addItemBtn = document.getElementById('addItemBtn');
+        const cartItemsDiv = document.getElementById('cartItems');
+
+        const totalWeightSpan = document.getElementById('totalWeight');
+        const grandTotalSpan = document.getElementById('grandTotal');
+        const discountInput = document.getElementById('discountInput');
+        const discountAmountSpan = document.getElementById('discountAmount');
+        const finalAmountSpan = document.getElementById('finalAmount');
+
+        const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+
+        // Custom Modal Elements
+        const customModal = document.getElementById('customModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+        const modalCancelBtn = document.getElementById('modalCancelBtn');
+        const modalOkBtn = document.getElementById('modalOkBtn');
+
+        // Data Storage
+        let skus = JSON.parse(localStorage.getItem('skus')) || [];
+        let cartItems = JSON.parse(localStorage.getItem('cartItems')) || [];
+        let editingSkuCode = null; // To keep track of which SKU is being edited
+
+        // --- Custom Modal Functions ---
+        function showModal(title, message, type = 'alert') {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modalConfirmBtn.classList.add('hidden');
+            modalCancelBtn.classList.add('hidden');
+            modalOkBtn.classList.add('hidden');
+
+            return new Promise((resolve) => {
+                if (type === 'alert') {
+                    modalOkBtn.classList.remove('hidden');
+                    modalOkBtn.onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(true);
+                    };
+                } else if (type === 'confirm') {
+                    modalConfirmBtn.classList.remove('hidden');
+                    modalCancelBtn.classList.remove('hidden');
+                    modalConfirmBtn.onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(true);
+                    };
+                    modalCancelBtn.onclick = () => {
+                        customModal.classList.add('hidden');
+                        resolve(false);
+                    };
+                }
+                customModal.classList.remove('hidden');
+            });
+        }
+
+        // --- SKU Management Functions ---
+
+        // Renders the list of SKUs in the UI
+        function renderSkuList() {
+            skuListDiv.innerHTML = ''; // Clear existing list
+            if (skus.length === 0) {
+                skuListDiv.innerHTML = '<p class="text-gray-500 text-center">No SKUs added yet.</p>';
+                return;
+            }
+
+            skus.forEach(sku => {
+                const skuItem = document.createElement('div');
+                skuItem.className = 'flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200';
+                skuItem.innerHTML = `
+                    <div class="mb-2 sm:mb-0">
+                        <p class="text-lg font-semibold text-gray-800">${sku.skuCode}</p>
+                        <p class="text-gray-600">${sku.itemName}</p>
+                        <p class="text-gray-500 text-sm">${sku.weight} Kg | ₹${sku.price.toFixed(2)}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button data-sku-code="${sku.skuCode}" class="edit-sku-btn px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </button>
+                        <button data-sku-code="${sku.skuCode}" class="delete-sku-btn px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm">
+                            <i class="fas fa-trash-alt mr-1"></i> Delete
+                        </button>
+                    </div>
+                `;
+                skuListDiv.appendChild(skuItem);
+            });
+
+            // Attach event listeners to new edit/delete buttons
+            document.querySelectorAll('.edit-sku-btn').forEach(button => {
+                button.addEventListener('click', (e) => editSku(e.target.dataset.skuCode));
+            });
+            document.querySelectorAll('.delete-sku-btn').forEach(button => {
+                button.addEventListener('click', (e) => deleteSku(e.target.dataset.skuCode));
+            });
+        }
+
+        // Populates form for editing an SKU
+        function editSku(skuCode) {
+            const skuToEdit = skus.find(sku => sku.skuCode === skuCode);
+            if (skuToEdit) {
+                skuCodeInput.value = skuToEdit.skuCode;
+                itemNameInput.value = skuToEdit.itemName;
+                weightInput.value = skuToEdit.weight;
+                priceInput.value = skuToEdit.price;
+                addUpdateSkuBtn.textContent = 'Update SKU';
+                addUpdateSkuBtn.classList.remove('bg-blue-600');
+                addUpdateSkuBtn.classList.add('bg-yellow-600');
+                editingSkuCode = skuCode; // Set the SKU being edited
+                skuCodeInput.disabled = true; // SKU Code usually shouldn't be changed when editing
+            }
+        }
+
+        // Adds or updates an SKU
+        async function addUpdateSku() {
+            const skuCode = skuCodeInput.value.trim();
+            const itemName = itemNameInput.value.trim();
+            const weight = parseFloat(weightInput.value);
+            const price = parseFloat(priceInput.value);
+
+            if (!skuCode || !itemName || isNaN(weight) || isNaN(price) || weight <= 0 || price <= 0) {
+                await showModal('Input Error', 'Please fill in all SKU fields correctly (Weight and Price must be positive numbers).');
+                return;
+            }
+
+            if (editingSkuCode) {
+                // Update existing SKU
+                const index = skus.findIndex(sku => sku.skuCode === editingSkuCode);
+                if (index !== -1) {
+                    skus[index] = { skuCode, itemName, weight, price };
+                    await showModal('SKU Updated', `SKU ${skuCode} has been updated successfully.`);
+                }
+                editingSkuCode = null; // Reset editing state
+                addUpdateSkuBtn.textContent = 'Add SKU';
+                addUpdateSkuBtn.classList.remove('bg-yellow-600');
+                addUpdateSkuBtn.classList.add('bg-blue-600');
+                skuCodeInput.disabled = false; // Enable SKU Code input
+            } else {
+                // Add new SKU
+                if (skus.some(sku => sku.skuCode === skuCode)) {
+                    await showModal('Duplicate SKU', `SKU Code "${skuCode}" already exists. Please use a unique code or edit the existing SKU.`);
+                    return;
+                }
+                skus.push({ skuCode, itemName, weight, price });
+                await showModal('SKU Added', `SKU ${skuCode} has been added successfully.`);
+            }
+
+            localStorage.setItem('skus', JSON.stringify(skus));
+            clearSkuForm();
+            renderSkuList();
+            populateSkuDropdown();
+        }
+
+        // Deletes an SKU
+        async function deleteSku(skuCode) {
+            const confirmed = await showModal('Confirm Deletion', `Are you sure you want to delete SKU "${skuCode}"? This action cannot be undone.`, 'confirm');
+            if (confirmed) {
+                skus = skus.filter(sku => sku.skuCode !== skuCode);
+                localStorage.setItem('skus', JSON.stringify(skus));
+                renderSkuList();
+                populateSkuDropdown();
+                await showModal('SKU Deleted', `SKU ${skuCode} has been deleted.`);
+            }
+        }
+
+        // Clears the SKU input form
+        function clearSkuForm() {
+            skuCodeInput.value = '';
+            itemNameInput.value = '';
+            weightInput.value = '';
+            priceInput.value = '';
+            editingSkuCode = null;
+            addUpdateSkuBtn.textContent = 'Add SKU';
+            addUpdateSkuBtn.classList.remove('bg-yellow-600');
+            addUpdateSkuBtn.classList.add('bg-blue-600');
+            skuCodeInput.disabled = false;
+        }
+
+        // Toggles SKU database visibility
+        function toggleSkuDatabase() {
+            const isHidden = skuDatabaseContent.classList.toggle('hidden');
+            if (isHidden) {
+                toggleSkuDatabaseBtn.innerHTML = '<i class="fas fa-eye mr-2"></i> Show SKU Database';
+            } else {
+                toggleSkuDatabaseBtn.innerHTML = '<i class="fas fa-eye-slash mr-2"></i> Hide SKU Database';
+            }
+        }
+
+        // --- Price Calculator Functions ---
+
+        // Populates the SKU dropdown with available SKUs
+        function populateSkuDropdown() {
+            selectSkuDropdown.innerHTML = '<option value="">-- Select SKU --</option>';
+            skus.forEach(sku => {
+                const option = document.createElement('option');
+                option.value = sku.skuCode;
+                option.textContent = `${sku.skuCode} - ${sku.itemName} (₹${sku.price.toFixed(2)})`;
+                selectSkuDropdown.appendChild(option);
+            });
+        }
+
+        // Adds selected item to the cart
+        async function addItemToCart() {
+            const selectedSkuCode = selectSkuDropdown.value;
+            const quantity = parseInt(quantityInput.value);
+            const modelNo = modelNoInput.value.trim();
+            const towerHeight = towerHeightInput.value.trim();
+
+            if (!selectedSkuCode) {
+                await showModal('Selection Error', 'Please select an SKU to add.');
+                return;
+            }
+            if (isNaN(quantity) || quantity <= 0) {
+                await showModal('Input Error', 'Quantity must be a positive number.');
+                return;
+            }
+
+            const selectedSku = skus.find(sku => sku.skuCode === selectedSkuCode);
+            if (selectedSku) {
+                const totalItemPrice = selectedSku.price * quantity;
+                const totalItemWeight = selectedSku.weight * quantity;
+
+                cartItems.push({
+                    skuCode: selectedSku.skuCode,
+                    itemName: selectedSku.itemName,
+                    weight: selectedSku.weight, // per unit weight
+                    price: selectedSku.price,   // per unit price
+                    quantity: quantity,
+                    modelNo: modelNo,
+                    towerHeight: towerHeight,
+                    totalItemPrice: totalItemPrice,
+                    totalItemWeight: totalItemWeight
+                });
+
+                localStorage.setItem('cartItems', JSON.stringify(cartItems));
+                renderCartItems();
+                updateCalculations();
+                await showModal('Item Added', `${selectedSku.itemName} (x${quantity}) added to calculator.`);
+                // Clear inputs after adding
+                selectSkuDropdown.value = '';
+                quantityInput.value = '1';
+                modelNoInput.value = '';
+                towerHeightInput.value = '';
+            }
+        }
+
+        // Renders items currently in the cart
+        function renderCartItems() {
+            cartItemsDiv.innerHTML = '';
+            if (cartItems.length === 0) {
+                cartItemsDiv.innerHTML = `
+                    <i class="fas fa-shopping-cart text-4xl mb-2 text-gray-400"></i>
+                    <p class="text-gray-500">No items added yet</p>
+                `;
+                return;
+            }
+
+            cartItems.forEach((item, index) => {
+                const cartItemElement = document.createElement('div');
+                cartItemElement.className = 'flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-200';
+                cartItemElement.innerHTML = `
+                    <div class="mb-2 sm:mb-0">
+                        <p class="text-lg font-semibold text-gray-800">${item.itemName} (${item.skuCode}) x ${item.quantity}</p>
+                        <p class="text-gray-600 text-sm">
+                            ${item.modelNo ? `Model: ${item.modelNo}` : ''}
+                            ${item.modelNo && item.towerHeight ? ' | ' : ''}
+                            ${item.towerHeight ? `Height: ${item.towerHeight}` : ''}
+                        </p>
+                        <p class="text-gray-500 text-sm">Total Weight: ${item.totalItemWeight.toFixed(2)} Kg | Total Price: ₹${item.totalItemPrice.toFixed(2)}</p>
+                    </div>
+                    <button data-index="${index}" class="remove-cart-item-btn px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm">
+                        <i class="fas fa-times mr-1"></i> Remove
+                    </button>
+                `;
+                cartItemsDiv.appendChild(cartItemElement);
+            });
+
+            document.querySelectorAll('.remove-cart-item-btn').forEach(button => {
+                button.addEventListener('click', (e) => removeItemFromCart(parseInt(e.target.dataset.index)));
+            });
+        }
+
+        // Removes an item from the cart
+        async function removeItemFromCart(index) {
+            const confirmed = await showModal('Confirm Removal', 'Are you sure you want to remove this item from the calculator?', 'confirm');
+            if (confirmed) {
+                cartItems.splice(index, 1);
+                localStorage.setItem('cartItems', JSON.stringify(cartItems));
+                renderCartItems();
+                updateCalculations();
+                await showModal('Item Removed', 'Item has been removed successfully.');
+            }
+        }
+
+        // Updates all calculations (total weight, grand total, discount, final amount)
+        function updateCalculations() {
+            let totalWeight = 0;
+            let grandTotal = 0;
+
+            cartItems.forEach(item => {
+                totalWeight += item.totalItemWeight;
+                grandTotal += item.totalItemPrice;
+            });
+
+            const discountPercentage = parseFloat(discountInput.value) || 0;
+            const discountAmount = (grandTotal * discountPercentage) / 100;
+            const finalAmount = grandTotal - discountAmount;
+
+            totalWeightSpan.textContent = `${totalWeight.toFixed(2)} Kg`;
+            grandTotalSpan.textContent = `₹${grandTotal.toFixed(2)}`;
+            discountAmountSpan.textContent = `₹${discountAmount.toFixed(2)}`;
+            finalAmountSpan.textContent = `₹${finalAmount.toFixed(2)}`;
+        }
+
+        // --- PDF Generation ---
+        async function downloadPdf() {
+            if (cartItems.length === 0) {
+                await showModal('No Items', 'Please add items to the calculator before generating a PDF.');
+                return;
+            }
+
+            // Temporarily hide buttons for cleaner PDF capture
+            const buttonsToHide = document.querySelectorAll('#downloadPdfBtn, #clearAllBtn, .edit-sku-btn, .delete-sku-btn, .remove-cart-item-btn, #toggleSkuDatabaseBtn, #addUpdateSkuBtn, #addItemBtn');
+            buttonsToHide.forEach(btn => btn.style.visibility = 'hidden');
+
+            const element = document.querySelector('.max-w-4xl'); // Capture the main content area
+            const originalPadding = element.style.padding;
+            element.style.padding = '20px'; // Add some padding for PDF
+
+            // Create a temporary div for Nexrise India Infra details
+            const nexriseDetailsDiv = document.createElement('div');
+            nexriseDetailsDiv.className = 'text-center text-gray-700 text-sm mt-8 p-4 bg-gray-100 rounded-lg';
+            nexriseDetailsDiv.innerHTML = `
+                <p><strong>Nexrise India Infra</strong></p>
+                <p>Mobile Access Scaffold Tower and Ladders Company</p>
+                <p>Jaipur, serving across Pan India</p>
+                <p>Contact: +91 9009006794 | Email: sales@nexriseindia.in</p>
+                <p>Website: www.nexriseindia.in</p>
+            `;
+            element.appendChild(nexriseDetailsDiv);
+
+            // Add a title to the PDF
+            const pdfTitle = document.createElement('h1');
+            pdfTitle.textContent = 'Price Quotation';
+            pdfTitle.className = 'text-3xl font-bold text-center mb-6 text-gray-800';
+            element.prepend(pdfTitle); // Add at the beginning of the element
+
+            try {
+                const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'px',
+                    format: 'a4'
+                });
+
+                const imgWidth = 595; // A4 width in px (approx)
+                const pageHeight = 842; // A4 height in px (approx)
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                pdf.save('Price_Quotation.pdf');
+                await showModal('PDF Generated', 'Your price quotation PDF has been downloaded!');
+
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                await showModal('PDF Error', 'Failed to generate PDF. Please try again.');
+            } finally {
+                // Restore hidden buttons
+                buttonsToHide.forEach(btn => btn.style.visibility = 'visible');
+                element.style.padding = originalPadding; // Restore original padding
+                element.removeChild(nexriseDetailsDiv); // Remove temporary div
+                element.removeChild(pdfTitle); // Remove temporary title
+            }
+        }
+
+        // --- Clear All Functionality ---
+        async function clearAll() {
+            const confirmed = await showModal('Confirm Clear All', 'Are you sure you want to clear all items from the calculator and reset discounts? This will not clear your SKU database.', 'confirm');
+            if (confirmed) {
+                cartItems = [];
+                localStorage.removeItem('cartItems');
+                discountInput.value = '0';
+                renderCartItems();
+                updateCalculations();
+                await showModal('Cleared', 'Calculator has been reset.');
+            }
+        }
+
+        // --- Event Listeners ---
+        addUpdateSkuBtn.addEventListener('click', addUpdateSku);
+        toggleSkuDatabaseBtn.addEventListener('click', toggleSkuDatabase);
+        addItemBtn.addEventListener('click', addItemToCart);
+        discountInput.addEventListener('input', updateCalculations);
+        downloadPdfBtn.addEventListener('click', downloadPdf);
+        clearAllBtn.addEventListener('click', clearAll);
+
+        // Initial render on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSkuList();
+            populateSkuDropdown();
+            renderCartItems();
+            updateCalculations();
+        });
+    </script>
+</body>
+</html>
